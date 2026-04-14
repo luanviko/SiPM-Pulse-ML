@@ -8,6 +8,8 @@ In the following, I will use the words SiPM and photosensor interchangeably.
 
 \[This file is a draft and more details will be added as I improve the model and dashboard\]
 
+![A snapshot of the dashboard showing a waveform and comparisons between real and predicted amplitudes.](snapshot.png)
+
 ## Experimental Setup
 
 * An LED generates pulses at 470 nm, at a frequency of about 1 MHz.
