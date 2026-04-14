@@ -1,1 +1,2 @@
-# SiPM-Pulse-ML
+# SiPM Pulse Analysis with CNN
+
