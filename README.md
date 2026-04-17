@@ -1,5 +1,9 @@
 # SiPM Pulse Analysis with CNN
 
+You can try the dashboard using the link below!
+
+https://sipm-pulse-ml.streamlit.app/
+
 This is a small project to try and predict the amplitude of photosensor pulses using a Convolutional Neural Network using Python and Tensorflow. 
 
 Data visualization is implemented in a dashboard based in Plotly and Streamlit.
