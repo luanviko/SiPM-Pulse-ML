@@ -2,99 +2,79 @@ from array import array
 import ROOT 
 import numpy as np
 
-
-def fit_data(data, pe_value = 1., title:str = "Global", xrange=[], fitrange = []):
+def fit_data(data, pe_value=1.0, title="Global", xrange=[], initial_guesses=[], ranges=[]):
     
-    parameters = array('d', 15*[0.])
+    # Numer of Gaussians to fit
+    n_gauss = len(initial_guesses)
+    
+    # Create histogram and fill it with data
     canvas = ROOT.TCanvas("canvas", "canvas", 600, 600)
     hist1  = ROOT.TH1F("timing1", title, 167, xrange[0], xrange[1])
     
-    fit1 = ROOT.TF1("fit1", "gaus", 0/pe_value,  14/pe_value)    
-    fit2 = ROOT.TF1("fit2", "gaus", 14/pe_value, 24/pe_value)    
-    fit3 = ROOT.TF1("fit3", "gaus", 24/pe_value, 31/pe_value)   
-    fit4 = ROOT.TF1("fit4", "gaus", 31/pe_value, 40/pe_value) 
-    fit5 = ROOT.TF1("fit5", "gaus", 40/pe_value, 50/pe_value) 
+    for val in data:
+        hist1.Fill(val / pe_value)
     
-    total = ROOT.TF1("mstotal","gaus(0)+gaus(3)+gaus(6)+gaus(9)+gaus(12)",0,140);
+    # Construct the total fit formula: "gaus(0)+gaus(3)+..."
+    formula = "+".join([f"gaus({i*3})" for i in range(n_gauss)])
+    total = ROOT.TF1("mstotal", formula, xrange[0], xrange[1])
     
-    fit1.SetParameters(4000, 8/pe_value,  1)
-    fit2.SetParameters(2000, 18/pe_value, 1)
-    fit3.SetParameters(1800, 26/pe_value, 1)
-    fit4.SetParameters(1000, 34/pe_value, 1)
-    fit5.SetParameters(500,  44/pe_value, 1)
-        
-    for i in range(0, len(data)):
-        hist1.Fill(data[i]/pe_value)
-    canvas.cd(0)    
-    hist1.Draw("HIST")
-    
-    hist1.Fit("fit1", "R+")
-    hist1.Fit("fit2", "R+")
-    hist1.Fit("fit3", "R+")
-    hist1.Fit("fit4", "R+")
-    hist1.Fit("fit5", "R+")
-    
-    fit1.Draw("SAME")
-    fit2.Draw("SAME")
-    fit3.Draw("SAME")
-    fit4.Draw("SAME")
-    fit5.Draw("SAME")
+    individual_fits = []
+    all_params = []
 
-    
-    all_parameters = []
-    for fit in [fit1, fit2, fit3, fit4, fit5]:
-        all_parameters.append(fit.GetParameters()[0])
-        all_parameters.append(fit.GetParameters()[1])
-        all_parameters.append(fit.GetParameters()[2])
-    
-    i = 0
-    for param in all_parameters:
-        parameters[i] = all_parameters[i]
-        i = i+1
-    
-    param0 = fit1.GetParameters()[0]
-    param1 = fit1.GetParameters()[1]
-    param2 = fit1.GetParameters()[2]
-    param3 = fit2.GetParameters()[0]
-    param4 = fit2.GetParameters()[1]
-    param5 = fit2.GetParameters()[2]
-    param6 = fit3.GetParameters()[0]
-    param7 = fit3.GetParameters()[1]
-    param8 = fit3.GetParameters()[2]
-    param9 = fit4.GetParameters()[0]
-    param10 = fit4.GetParameters()[1]
-    param11 = fit4.GetParameters()[2]
-    param12 = fit5.GetParameters()[0]
-    param13 = fit5.GetParameters()[1]
-    param14 = fit5.GetParameters()[2]
+    # Fit individual Gaussians first to get better seeds
+    for i in range(n_gauss):
+        fit_name = f"fit{i}"
+        low, high = ranges[i][0] / pe_value, ranges[i][1] / pe_value
         
-    # total.SetParameters(param0, param1, param2, param3, param4, param5, param6, param7, param8, param9, param10, param11, param12, param13, param14)
-    total.SetParameters(parameters)    
+        f_ind = ROOT.TF1(fit_name, "gaus", low, high)
+        f_ind.SetParameters(initial_guesses[i][0], initial_guesses[i][1] / pe_value, initial_guesses[i][2])
+        
+        hist1.Fit(f_ind, "R+N") # N to not draw immediately
+        individual_fits.append(f_ind)
+        
+        # Collect parameters for the total fit
+        params = f_ind.GetParameters()
+        all_params.extend([params[0], params[1], params[2]])
+
+    # Set parameters for the total combined fit
+    total_params_array = array('d', all_params)
+    total.SetParameters(total_params_array)
+    
+    hist1.Draw("HIST")
     hist1.Fit(total, "R+")
     total.Draw("SAME")
-        
-    parameters.append(param0)
-    parameters.append(param1)
-    parameters.append(param2)
     
+    # Extract final results
+    final_params = total.GetParameters()
+    amps   = [final_params[i*3] for i in range(n_gauss)]
+    means  = [final_params[i*3+1] for i in range(n_gauss)]
+    sigmas = [final_params[i*3+2] for i in range(n_gauss)]
     
     canvas.SaveAs("./pe_fitting.png")
-
-    amps    = [param0, param3, param6, param9, param12]
-    means   = [param1, param4, param7, param10, param13]
-    sigmas  = [param2, param5, param8, param11, param14]
-
     return amps, means, sigmas
 
-amplitude = np.load("./data/processed_data_validated.npz")['amplitude']
-amps, means, sigmas = fit_data(amplitude, xrange = [0,80])
+# Load data
+amplitude = np.load("./data/01_processed_data_validated.npz")['amplitude']
 
-pe_value = (means[-1]-means[0])/4.
+# Visually determine the initial guesses for 
+# the fit parameters (amplitude, mean, sigma) for each peak
+guesses = [
+    [4000, 8, 1], [2000, 18, 1], [1800, 26, 1], [1000, 34, 1], [500, 44, 1]
+]
 
-error_m1 = sigmas[0] / np.sqrt(amps[0])
-error_m5 = sigmas[-1] / np.sqrt(amps[-1])
-pe_error = np.sqrt(error_m1**2 + error_m5**2)/4.
+# Visually determine the fitting ranges for each peak to improve the fit quality
+fit_ranges = [
+    [0, 14], [14, 24], [24, 31], [31, 40], [40, 50]
+]
 
-print(f'{np.average(np.diff(means)):.2f} mV/PE')
+# Perform the fitting and extract the parameters
+amps, means, sigmas = fit_data(
+    amplitude, 
+    xrange=[0, 80], 
+    initial_guesses=guesses, 
+    ranges=fit_ranges
+)
 
-print(f"PE Value: {pe_value:.2f} mV ± {pe_error:.2f} mV")
+# I take the average distance between the means of the peaks to estimate the PE value
+pe_value = (means[-1] - means[0]) / 4.0
+print(f"PE Value: {pe_value:.2f} mV")

@@ -12,12 +12,12 @@ def display_waveform(waveform, event, xscale=1, yscale=1, baseline=0.):
 pe_value = 8.90 # mV/p.e., from 00b_pe_fitting.py
 
 # input_data = np.load("./data/raw_waveforms.npz")
-input_data = np.load("./data/waveforms_validated.npz")
+input_data = np.load("./data/01_validated_waveforms.npz")
 waveforms  = input_data['waveforms']
 waveforms  = waveforms/pe_value
 
 # input_data = np.load("./data/processed_data.npz")
-input_data = np.load("./data/processed_data_validated.npz")
+input_data = np.load("./data/02_pulse_information.npz")
 baseline = input_data['baseline']
 amplitude = input_data['amplitude']
 
@@ -31,7 +31,7 @@ global_max = np.max(waveforms)
 global_max = np.percentile(waveforms, 99.9)
 # global_max = 1. 
 normalized_waveforms = waveforms / global_max 
-np.savez("./data/global_max.npz", global_max=global_max)
+np.savez("./data/03_global_max.npz", global_max=global_max)
 
 # Clip waveforms
 A = 180
@@ -86,7 +86,7 @@ history = model.fit(
 )
 
 # 4. Save the trained model
-model.save('sipm_pulse_model_validated_pe.keras')
+model.save('./data/04_sipm_model.keras')
 print("Model saved to disk.")
 
 # 5. Plot training history

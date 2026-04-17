@@ -28,16 +28,16 @@ def apply_unified_style(fig, title):
 def prepare_data():
     N_events = 8000
     pe_value = 8.90 # mV/p.e., from 00b_pe_fitting.py
-    real_amps = np.load("./data/processed_data_validated.npz")['amplitude'][N_events:]
+    real_amps = np.load("./data/02_pulse_information.npz")['amplitude'][N_events:]
     real_amps = real_amps / pe_value
-    predicted_amps = np.load("./data/predicted_amplitudes_validated_pe.npz")['predicted_amps'].flatten()
+    predicted_amps = np.load("./data/05_predicted_amplitudes.npz")['predicted_amps'].flatten()
     diff = predicted_amps - real_amps
     return real_amps, predicted_amps, diff
 
 @st.cache_resource
 def get_lazy_loaders():
-    wv_loader = np.load("./data/waveforms_validated.npz", mmap_mode='r')
-    proc_loader = np.load("./data/processed_data_validated.npz", mmap_mode='r')
+    wv_loader = np.load("./data/01_validated_waveforms.npz", mmap_mode='r')
+    proc_loader = np.load("./data/02_pulse_information.npz", mmap_mode='r')
     return wv_loader, proc_loader
 
 def fetch_waveform(event_index):
